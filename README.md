@@ -1,62 +1,80 @@
 # FinAlly — AI Trading Workstation
 
-A visually stunning AI-powered trading workstation that streams live market data, simulates portfolio trading, and integrates an LLM chat assistant that can analyze positions and execute trades via natural language.
+A Bloomberg-inspired AI trading workstation with live market data, simulated portfolio trading, and an LLM copilot that executes trades via natural language.
 
-Built entirely by coding agents as a capstone project for an agentic AI coding course.
-
-## Features
-
-- **Live price streaming** via SSE with green/red flash animations
-- **Simulated portfolio** — $10k virtual cash, market orders, instant fills
-- **Portfolio visualizations** — heatmap (treemap), P&L chart, positions table
-- **AI chat assistant** — analyzes holdings, suggests and auto-executes trades
-- **Watchlist management** — track tickers manually or via AI
-- **Dark terminal aesthetic** — Bloomberg-inspired, data-dense layout
-
-## Architecture
-
-Single Docker container serving everything on port 8000:
-
-- **Frontend**: Next.js (static export) with TypeScript and Tailwind CSS
-- **Backend**: FastAPI (Python/uv) with SSE streaming
-- **Database**: SQLite with lazy initialization
-- **AI**: LiteLLM → OpenRouter (Cerebras inference) with structured outputs
-- **Market data**: Built-in GBM simulator (default) or Massive API (optional)
+Built by orchestrated AI coding agents.
 
 ## Quick Start
 
 ```bash
-# Clone and configure
-cp .env.example .env
-# Add your OPENROUTER_API_KEY to .env
-
-# Run with Docker
-docker build -t finally .
-docker run -v finally-data:/app/db -p 8000:8000 --env-file .env finally
-
-# Open http://localhost:8000
+cp .env.example .env          # Add OPENROUTER_API_KEY for AI chat
+./scripts/start_mac.sh        # Builds & runs Docker container
+open http://localhost:8000
 ```
+
+**What you get immediately:** 10 default tickers with live prices, $10,000 virtual cash, dark terminal UI, AI chat panel ready to go.
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Live prices** | SSE stream, green/red flash animations on tick |
+| **Trading** | Market orders, instant fill, fractional shares, no fees |
+| **Portfolio view** | Treemap heatmap, P&L chart, positions table |
+| **AI Copilot** | Chat to analyze positions, suggest trades, auto-execute |
+| **Watchlist** | Add/remove tickers manually or via AI |
+
+## Architecture
+
+Single Docker container on **port 8000**:
+
+```
+FastAPI (Python/uv)          Next.js (TypeScript, static export)
+├── /api/*      REST         served as static/
+├── /api/stream/*  SSE       
+└── /*          static files
+```
+
+- **Market data**: GBM simulator (default) or Polygon.io via Massive SDK
+- **AI**: LiteLLM → OpenRouter (Cerebras), structured outputs
+- **Database**: SQLite at `db/finally.db` (volume-mounted)
+- **Real-time**: SSE (server → client only)
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for AI chat |
-| `MASSIVE_API_KEY` | No | Massive (Polygon.io) key for real market data; omit to use simulator |
-| `LLM_MOCK` | No | Set `true` for deterministic mock LLM responses (testing) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENROUTER_API_KEY` | — | Required for AI chat. Without it, chat panel is disabled. |
+| `MASSIVE_API_KEY` | — | Optional. Real market data via Polygon.io; omit for simulator. |
+| `LLM_MOCK` | `false` | Deterministic mock LLM responses (testing/E2E) |
 
-## Project Structure
+## Project Layout
 
 ```
 finally/
-├── frontend/    # Next.js static export
-├── backend/     # FastAPI uv project
-├── planning/    # Project documentation and agent contracts
-├── test/        # Playwright E2E tests
-├── db/          # SQLite volume mount (runtime)
-└── scripts/     # Start/stop helpers
+├── frontend/          # Next.js (static export)
+├── backend/          # FastAPI uv project
+│   └── app/market/   # Market data subsystem (simulator + Massive)
+├── planning/         # Full spec, agent contracts
+├── test/             # Playwright E2E tests
+└── scripts/          # start_mac.sh, stop_mac.sh
 ```
 
-## License
+## Backend Dev
 
-See [LICENSE](LICENSE).
+```bash
+cd backend
+uv sync --extra dev
+uv run pytest -v --cov=app
+uv run market_data_demo.py   # Rich terminal demo of live prices
+```
+
+## Demo
+
+Market data is fully implemented and testable without any API keys:
+
+```bash
+cd backend && uv run market_data_demo.py
+```
+
+Shows a Rich terminal dashboard with 10 tickers, sparklines, and event log.
