@@ -129,3 +129,21 @@ class TestGBMSimulator:
         if '.' in price_str:
             decimal_part = price_str.split('.')[1]
             assert len(decimal_part) <= 2
+
+    def test_all_default_tickers_can_step(self):
+        """The full default watchlist should produce a valid Cholesky matrix and prices."""
+        sim = GBMSimulator(tickers=list(SEED_PRICES))
+
+        prices = sim.step()
+
+        assert set(prices) == set(SEED_PRICES)
+        assert all(price > 0 for price in prices.values())
+
+    def test_get_tickers_returns_copy(self):
+        """Callers cannot mutate simulator ticker state through get_tickers()."""
+        sim = GBMSimulator(tickers=["AAPL"])
+
+        tickers = sim.get_tickers()
+        tickers.append("TSLA")
+
+        assert sim.get_tickers() == ["AAPL"]
