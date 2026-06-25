@@ -1,0 +1,5 @@
+{
+    "name": "independent-reviewer",
+    "description": "An independent reviewer agent that reviews code changes since last commit",
+    "version": "1.0.0"
+}
