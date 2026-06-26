@@ -14,19 +14,19 @@
 
 ### Backend — Market Data (Simulator)
 
-- [ ] **MKT-01**: Geometric Brownian motion price generation with configurable drift/volatility per ticker
-- [ ] **MKT-02**: Correlated price moves across tickers (sector groupings)
-- [ ] **MKT-03**: Random "event" spikes (2-5% sudden moves) at low frequency
-- [ ] **MKT-04**: Price updates at ~500ms intervals
-- [ ] **MKT-05**: Realistic seed prices per ticker (AAPL ~$190, GOOGL ~$175, etc.)
+- [x] **MKT-01**: Geometric Brownian motion price generation with configurable drift/volatility per ticker
+- [x] **MKT-02**: Correlated price moves across tickers (sector groupings)
+- [x] **MKT-03**: Random "event" spikes (2-5% sudden moves) at low frequency
+- [x] **MKT-04**: Price updates at ~500ms intervals
+- [x] **MKT-05**: Realistic seed prices per ticker (AAPL ~$190, GOOGL ~$175, etc.)
 - [ ] **MKT-06**: Abstract MarketDataSource interface — simulator and Massive API both implement it
 - [ ] **MKT-07**: Thread-safe in-memory PriceCache shared by all endpoints
 
 ### Backend — Market Data (Massive API)
 
-- [ ] **MAP-01**: REST polling client for Massive (Polygon.io) API when MASSIVE_API_KEY is set
-- [ ] **MAP-02**: Falls back to simulator when MASSIVE_API_KEY is absent or empty
-- [ ] **MAP-03**: Same PriceCache interface as simulator — downstream code is agnostic to source
+- [x] **MAP-01**: REST polling client for Massive (Polygon.io) API when MASSIVE_API_KEY is set
+- [x] **MAP-02**: Falls back to simulator when MASSIVE_API_KEY is absent or empty
+- [x] **MAP-03**: Same PriceCache interface as simulator — downstream code is agnostic to source
 
 ### Backend — REST API
 
@@ -36,7 +36,7 @@
 - [ ] **API-04**: GET /api/watchlist — returns current watchlist tickers with latest prices
 - [ ] **API-05**: POST /api/watchlist — adds ticker: {ticker}, validates ticker format
 - [ ] **API-06**: DELETE /api/watchlist/{ticker} — removes ticker from watchlist
-- [ ] **POST /api/chat**: POST /api/chat — receives {message}, loads portfolio context + chat history, calls LLM with structured output, auto-executes trades, stores message + actions, returns {message, actions}
+- [ ] **API-07**: POST /api/chat — receives {message}, loads portfolio context + chat history, calls LLM with structured output, auto-executes trades, stores message + actions, returns {message, actions}
 - [ ] **API-08**: GET /api/health — returns health check status
 
 ### Backend — SSE Streaming
@@ -160,27 +160,30 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DB-01 — DB-04 | Phase 1 | Pending |
-| MKT-01 — MKT-07 | Phase 2 | Pending |
-| MAP-01 — MAP-03 | Phase 2 | Pending |
-| API-01 — API-08 | Phase 3 | Pending |
-| SSE-01 — SSE-05 | Phase 4 | Pending |
-| LLM-01 — LLM-07 | Phase 5 | Pending |
-| SNAP-01 — SNAP-02 | Phase 3+4 | Pending |
-| FE-01 — FE-05 | Phase 6 | Pending |
-| WL-01 — WL-06 | Phase 6 | Pending |
-| CH-01 — CH-04 | Phase 6 | Pending |
-| PF-01 — PF-05 | Phase 6 | Pending |
-| TB-01 — TB-07 | Phase 6 | Pending |
-| CHAT-01 — CHAT-07 | Phase 6 | Pending |
-| HDR-01 — HDR-03 | Phase 6 | Pending |
-| DOCKER-01 — DOCKER-09 | Phase 7 | Pending |
-| TEST-01 — TEST-03 | Phase 8 | Pending |
+| MKT-01 — MKT-05 | Phase 0 (Validated) | Complete |
+| MKT-06 — MKT-07 | Phase 1 | Pending |
+| MAP-01 — MAP-03 | Phase 0 (Validated) | Complete |
+| API-01 — API-06, API-08 | Phase 2 | Pending |
+| API-07 (chat) | Phase 3 | Pending |
+| SSE-01 — SSE-05 | Phase 2 | Pending |
+| LLM-01 — LLM-07 | Phase 3 | Pending |
+| SNAP-01 — SNAP-02 | Phase 2 | Pending |
+| FE-01 — FE-05 | Phase 4 | Pending |
+| WL-01 — WL-06 | Phase 4 | Pending |
+| CH-01 — CH-04 | Phase 4 | Pending |
+| PF-01 — PF-05 | Phase 4 | Pending |
+| TB-01 — TB-07 | Phase 4 | Pending |
+| CHAT-01 — CHAT-07 | Phase 4 | Pending |
+| HDR-01 — HDR-03 | Phase 4 | Pending |
+| DOCKER-01 — DOCKER-09 | Phase 4 | Pending |
+| TEST-01 — TEST-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 78 total
-- Mapped to phases: 78
-- Unmapped: 0 ✓
+- Market data (MKT-01..MKT-05, MAP-01..MAP-03): 8 validated complete
+- Remaining mapped to phases: 70
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-26*
-*Last updated: 2026-06-26 after initial definition*
+*Last updated: 2026-06-26 after roadmap creation*
