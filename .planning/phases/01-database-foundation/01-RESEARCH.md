@@ -475,17 +475,21 @@ await db.commit()
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **DB file path for Docker deployment**
-   - What we know: DB_PATH should be `db/finally.db` relative to project root, volume-mounted at container `/app/db`
-   - What's unclear: Whether the `finally.db` file itself should be gitignored (yes — runtime state)
-   - Recommendation: Add `db/finally.db` to `.gitignore`, keep `db/.gitkeep` for directory presence
+1. **DB file path for Docker deployment (RESOLVED)**
+   - What we know: DB_PATH should be `db/finally.db` relative to the backend working directory (the `db/` directory in the project root). The `.planning/` directory is for planning docs only and is not used at runtime.
+   - What's unclear (resolved): Whether the `finally.db` file itself should be gitignored
+   - **Resolution:** Use `DB_PATH = Path("db/finally.db")` — a path relative to the backend working directory (i.e., where the FastAPI process is started, which is `backend/` or the container's `/app/`). The `db/` directory is created at the project root, and Docker's volume mount maps the project-root `db/` to `/app/db` inside the container. Inside the container the backend's working directory is `/app/`, so `Path("db/finally.db")` resolves to `/app/db/finally.db`, which is the volume-mounted path. This works identically in dev (backend CWD = `backend/`, with `../db/finally.db`) — but to keep one canonical path that works in the container without conditionals, the backend should compute `DB_PATH` relative to its own location. Add `db/finally.db` to `.gitignore` (keep `db/.gitkeep` for the directory itself). The `.planning/` directory is excluded from the Docker image, so DB files must not live under `.planning/`.
 
-2. **PriceCache initialization order relative to DB**
-   - What we know: PriceCache is a singleton created at startup, DB initializes lazily on first request
-   - What's unclear: None — these are independent
-   - Recommendation: Proceed as designed
+2. **PriceCache initialization order relative to DB (RESOLVED)**
+   - What we know: PriceCache must be ready before market data streaming starts, and the DB only needs to exist when a request actually queries it.
+   - What's unclear (resolved): The exact ordering of these two initialization events
+   - **Resolution:** The canonical order on FastAPI lifespan startup is:
+     1. **Lifespan startup:** Create `PriceCache` singleton, then call `create_market_data_source(price_cache)` and `await market_source.start([...tickers])`. The background polling/simulation task begins writing into the in-memory `PriceCache` immediately.
+     2. **First REST/SSE request:** The endpoint handler (or a Depends-injected repository) calls `await get_db()`. If the SQLite file is missing or empty, `get_db()` runs `init_db()` lazily — enabling WAL, creating the 6 tables, and seeding the default user + watchlist — before returning the connection. SSE streaming does not touch the DB; it reads only from `PriceCache`.
+     3. **Lifespan shutdown:** `await market_source.stop()` — DB connection is closed opportunistically (not required, since SQLite is file-based and the OS releases the lock on process exit).
+   - **Key implication:** The DB and the PriceCache are intentionally decoupled. Market data streaming works even if the DB is unreachable (e.g., during a brief filesystem hiccup); portfolio/watchlist endpoints fail fast with a 500 if the DB cannot be opened. This means the `(RESOLVED)` recommendation is: keep the existing design — PriceCache first, then DB on first request. No code changes are required.
 
 ## Environment Availability
 
