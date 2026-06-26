@@ -1,28 +1,37 @@
-# Review: Changes Since Last Commit
+# Market Data Backend Code Review
+
+Review date: 2026-06-26
+Branch: `codex/marketdata-review-fixes`
+Scope: `backend/app/market`, `backend/tests/market`, and market-data readiness notes in `planning/MARKET_DATA_SUMMARY.md`.
 
 ## Findings
 
-1. **High: README quick start cannot run from this checkout.** `README.md:10` tells users to copy `.env.example`, but no `.env.example` file is present, and `README.md:11` tells users to run `./scripts/start_mac.sh`, but there is no `scripts/` directory in the repository. This makes the new primary onboarding path fail immediately. Either add the missing files/scripts in the same change or change the quick start to commands that actually exist today.
+1. **Medium: Explicit Unix timestamp `0.0` is silently replaced with wall-clock time.**  
+   `backend/app/market/cache.py:23-38` accepts an optional timestamp, but line 30 uses `timestamp or time.time()`. That treats any falsey timestamp as missing, including `0.0`. The current Massive client passes exchange timestamps through this path, so a valid epoch timestamp would be mutated instead of preserved. The cache should distinguish `None` from a valid numeric timestamp.
 
-2. **High: LLM mock/key behavior is internally contradictory.** `planning/PLAN.md:145` says a non-empty `OPENROUTER_API_KEY` makes the backend use LiteLLM/OpenRouter and ignore `LLM_MOCK`, while `planning/PLAN.md:149` says `LLM_MOCK=true` plus a non-empty key returns deterministic mock responses. The same contract says an empty key disables chat (`planning/PLAN.md:146`), but mock mode later claims to support development without an API key (`planning/PLAN.md:448`-`planning/PLAN.md:450`) and E2E runs with `LLM_MOCK=true` by default (`planning/PLAN.md:569`). As written, the mocked chat path is ambiguous or impossible. Define one precedence rule, e.g. `LLM_MOCK=true` always mocks regardless of API key, or mock mode requires a key and the docs should stop claiming no-key development.
+2. **Medium: Simulator ticker handling is not normalized while Massive ticker handling is.**  
+   `backend/app/market/massive_client.py:54-85` normalizes tickers to uppercase and strips whitespace, but `backend/app/market/simulator.py:67-69`, `backend/app/market/simulator.py:120-134`, and `backend/app/market/simulator.py:219-255` use input strings as-is. That means `"aapl"` and `" AAPL "` become unknown simulator tickers with random seed prices, wrong correlation grouping, and cache keys that differ from the Massive source. The simulator path is the default no-key backend, so downstream watchlist and trading code can see inconsistent behavior depending on whether `MASSIVE_API_KEY` is set.
 
-3. **High: money storage is specified as both integer cents and floating-point dollars.** The global convention says money/prices are stored and calculated as integer cents (`planning/PLAN.md:123`-`planning/PLAN.md:124`), but the schema uses `REAL` dollar fields (`planning/PLAN.md:209`, `planning/PLAN.md:224`, `planning/PLAN.md:234`, `planning/PLAN.md:240`), API responses expose dollar JSON numbers (`planning/PLAN.md:291`-`planning/PLAN.md:312`), and trade validation says execution uses rounded float prices (`planning/PLAN.md:361`-`planning/PLAN.md:365`). Implementers cannot tell whether persistence and portfolio math should use cents or dollars. Pick one model and make schema, API names, rounding rules, and examples match it.
+3. **Medium: `start()` can be called twice and leak an active background task.**  
+   `backend/app/market/simulator.py:219-230` and `backend/app/market/massive_client.py:47-59` create a new task every time `start()` is called. A second call overwrites `_task`, making the first loop unreachable for cancellation through `stop()`. The interface says double start is undefined, but backend app lifespan hooks and tests are easier to reason about if the data source fails fast instead of leaving duplicate pollers running.
 
-4. **Medium: portfolio total value has conflicting meanings.** The `/api/portfolio` response defines `total_value` as positions-only and `total_value_including_cash` as the header value (`planning/PLAN.md:307`-`planning/PLAN.md:312`). The `portfolio_snapshots.total_value` text says an initial `$10,000` snapshot is seeded (`planning/PLAN.md:237`), which only makes sense if snapshots include cash, while `/api/portfolio/history` returns only `total_value` (`planning/PLAN.md:368`-`planning/PLAN.md:375`). This will lead backend and frontend agents to disagree about what the P&L chart tracks. Rename or document the snapshot field as either positions market value excluding cash or account equity including cash, and align the API fields.
+4. **Low: Pytest configuration emits a deprecation warning on every async test.**  
+   `backend/tests/conftest.py:5-10` overrides `event_loop_policy`, and the installed `pytest-asyncio` reports that fixture override as deprecated. The suite still passes, but the warning is repeated 79 times and will eventually become a maintenance issue. Removing the redundant default policy fixture should keep the suite quiet.
 
-5. **Medium: README says the AI chat is ready immediately even though the documented default disables it.** `README.md:15` promises an "AI chat panel ready to go" after quick start, but `README.md:47` and `planning/PLAN.md:146` say chat is disabled without `OPENROUTER_API_KEY`. This is a user-facing contradiction. Make the quick-start result conditional on adding a key, or make mock chat available by default and document that behavior consistently.
+## Verification
 
-6. **Medium: the section structure now skips `## 5`, but the document still references Section 5.** The old `## 5. Environment Variables` heading was replaced with `### Global Conventions` under the prior section (`planning/PLAN.md:121`), and the environment variables now live there without a numbered heading (`planning/PLAN.md:127`-`planning/PLAN.md:150`). The review-resolution table still points to "Section 5" (`planning/PLAN.md:588`, `planning/PLAN.md:589`, `planning/PLAN.md:603`). This makes the canonical plan harder for agents to navigate and leaves stale references. Restore `## 5. Environment Variables` or add a numbered global conventions section and update the references.
+Baseline checks were run from a local ignored virtual environment because `uv` was not available in PATH in this shell:
 
-7. **Medium: the schema says all tables include `user_id`, then immediately exempts `users_profile`.** `planning/PLAN.md:205` says all tables include a `user_id` column, but `planning/PLAN.md:207` says `users_profile` has no `user_id`. Agents may generate schema mechanically from this section. Change the blanket statement to "all user-owned tables except `users_profile`" or add `user_id` to `users_profile`.
+- `backend/.venv/bin/ruff check .` passed.
+- `backend/.venv/bin/pytest -q` passed: 79 tests.
+- `backend/.venv/bin/pytest --cov=app --cov-report=term-missing -q` passed: 79 tests, 96% total coverage.
 
-8. **Medium: the new change-reviewer agent can recursively invoke Codex instead of performing a review.** `.claude/agents/change-reviewer.md:6`-`.claude/agents/change-reviewer.md:12` instructs the agent not to review changes and to run another `codex exec` review command. In a repo that also has a Stop hook running `codex exec` (`.claude/settings.json:7`-`.claude/settings.json:17`), that can create nested review invocations, overwrite `planning/REVIEW.md`, or fail in environments where the Codex CLI is not installed/configured. A reviewer agent should inspect `git status`, tracked diffs, and untracked files directly, then write the review.
+The installed `massive` package was also inspected locally. `RESTClient.get_snapshot_all(market_type=..., tickers=...)` and `SnapshotMarketType.STOCKS` match the current client code, so the real-data API call shape is compatible with the pinned dependency environment.
 
-## Open Questions
+## Recommended Fixes
 
-- Should `planning/PLAN.md:582`-`planning/PLAN.md:606` remain in the canonical plan? A "Documentation Review - Resolved" section can become stale quickly and may be better archived outside the project specification.
-- Is the README intended to describe the current repository state or the final planned app? Right now it advertises frontend, test, and scripts directories (`README.md:55`-`README.md:60`) that are not present in this checkout.
+1. Replace `timestamp or time.time()` with an explicit `timestamp is None` check and add coverage for `timestamp=0.0`.
+2. Add one shared ticker-normalization helper for market data sources, apply it to simulator initialization, add/remove/get paths, and cover lowercase/whitespace inputs in tests.
+3. Guard both data source `start()` implementations so a second active start raises a clear `RuntimeError`, with tests proving no duplicate loop is created.
+4. Remove the deprecated `event_loop_policy` fixture and rerun the suite to confirm warnings are gone.
 
-## Summary
-
-The documentation adds useful implementation detail, especially response shapes and container filesystem expectations, but several core contracts now conflict. I would resolve the quick-start breakage, LLM mock/key precedence, money representation, and portfolio value semantics before implementation agents build against these docs.
