@@ -24,6 +24,30 @@ class TestSimulatorDataSource:
 
         await source.stop()
 
+    async def test_start_normalizes_tickers(self):
+        """Default simulator source should expose the same ticker keys as Massive."""
+        cache = PriceCache()
+        source = SimulatorDataSource(price_cache=cache, update_interval=0.1)
+        await source.start([" aapl ", "AAPL", "googl"])
+
+        assert source.get_tickers() == ["AAPL", "GOOGL"]
+        assert cache.get("AAPL") is not None
+        assert cache.get(" aapl ") is None
+
+        await source.stop()
+
+    async def test_double_start_raises(self):
+        """A second active start should not leak another simulator task."""
+        cache = PriceCache()
+        source = SimulatorDataSource(price_cache=cache, update_interval=0.1)
+        await source.start(["AAPL"])
+
+        with pytest.raises(RuntimeError, match="already running"):
+            await source.start(["GOOGL"])
+
+        assert source.get_tickers() == ["AAPL"]
+        await source.stop()
+
     async def test_prices_update_over_time(self):
         """Test that prices are updated periodically."""
         cache = PriceCache()
@@ -53,9 +77,10 @@ class TestSimulatorDataSource:
         source = SimulatorDataSource(price_cache=cache, update_interval=0.1)
         await source.start(["AAPL"])
 
-        await source.add_ticker("TSLA")
+        await source.add_ticker(" tsla ")
         assert "TSLA" in source.get_tickers()
         assert cache.get("TSLA") is not None
+        assert cache.get(" tsla ") is None
 
         await source.stop()
 
@@ -65,7 +90,7 @@ class TestSimulatorDataSource:
         source = SimulatorDataSource(price_cache=cache, update_interval=0.1)
         await source.start(["AAPL", "TSLA"])
 
-        await source.remove_ticker("TSLA")
+        await source.remove_ticker(" tsla ")
         assert "TSLA" not in source.get_tickers()
         assert cache.get("TSLA") is None
 
@@ -128,9 +153,7 @@ class TestSimulatorDataSource:
         """Test creating source with custom event probability."""
         cache = PriceCache()
         # Very high event probability for testing
-        source = SimulatorDataSource(
-            price_cache=cache, update_interval=0.1, event_probability=1.0
-        )
+        source = SimulatorDataSource(price_cache=cache, update_interval=0.1, event_probability=1.0)
         await source.start(["AAPL"])
 
         # Just verify it starts and stops cleanly

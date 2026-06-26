@@ -44,18 +44,19 @@ MarketDataSource (ABC)
 
 ## Test Suite
 
-**73 tests, all passing.** 6 test modules in `backend/tests/market/`.
+**88 tests, all passing.** 7 test modules in `backend/tests/market/`.
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | test_models.py | 11 | models.py: 100% |
-| test_cache.py | 13 | cache.py: 100% |
-| test_simulator.py | 17 | simulator.py: 98% |
-| test_simulator_source.py | 10 | (integration tests) |
+| test_cache.py | 16 | cache.py: 100% |
+| test_simulator.py | 24 | simulator.py: 98% |
+| test_simulator_source.py | 12 | (integration tests) |
 | test_factory.py | 7 | factory.py: 100% |
-| test_massive.py | 13 | massive_client.py: 56% (expected — API methods mocked) |
+| test_massive.py | 16 | massive_client.py: 90% |
+| test_stream.py | 2 | stream.py: 86% |
 
-Overall coverage: 84%.
+Overall coverage: 96%.
 
 ## Code Review & Fixes Applied
 
@@ -68,6 +69,13 @@ A comprehensive code review identified 7 issues. All were resolved:
 5. **Correlation constants cleaned up** — removed unused `DEFAULT_CORR`, consolidated into `CROSS_GROUP_CORR`
 6. **Unused test imports removed** — `pytest`, `math`, `asyncio` cleaned from 4 test files
 7. **Massive test mocks fixed** — `source._client` set in tests, patches target correct names
+
+Follow-up review on 2026-06-26 identified 4 readiness issues. All were resolved:
+
+1. **Timestamp preservation** — `PriceCache.update()` now preserves explicit `0.0` timestamps instead of replacing them with wall-clock time
+2. **Ticker normalization** — simulator and Massive paths now share uppercase/trim/deduplicate behavior
+3. **Lifecycle guardrails** — simulator and Massive sources now reject a second active `start()` call instead of leaking background tasks
+4. **Async test warning cleanup** — removed the deprecated default event-loop fixture override from the test suite
 
 ## Demo
 

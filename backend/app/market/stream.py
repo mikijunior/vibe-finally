@@ -14,6 +14,7 @@ from .cache import PriceCache
 
 logger = logging.getLogger(__name__)
 
+
 def create_stream_router(price_cache: PriceCache) -> APIRouter:
     """Create the SSE streaming router with a reference to the price cache.
 

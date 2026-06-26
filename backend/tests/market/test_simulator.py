@@ -26,12 +26,29 @@ class TestGBMSimulator:
         # Before any step, price should be the seed price
         assert sim.get_price("AAPL") == SEED_PRICES["AAPL"]
 
+    def test_initial_tickers_are_normalized(self):
+        """Startup tickers should match the same canonical keys as real data."""
+        sim = GBMSimulator(tickers=[" aapl ", "AAPL", "googl"])
+
+        assert sim.get_tickers() == ["AAPL", "GOOGL"]
+        assert sim.get_price("aapl") == SEED_PRICES["AAPL"]
+
     def test_add_ticker(self):
         """Test adding a ticker dynamically."""
         sim = GBMSimulator(tickers=["AAPL"])
         sim.add_ticker("TSLA")
         result = sim.step()
         assert "TSLA" in result
+
+    def test_add_ticker_normalizes_input(self):
+        """Dynamically-added simulator tickers should use canonical keys."""
+        sim = GBMSimulator(tickers=["AAPL"])
+
+        sim.add_ticker(" tsla ")
+
+        assert "TSLA" in sim.get_tickers()
+        assert " tsla " not in sim.get_tickers()
+        assert sim.get_price("tsla") == SEED_PRICES["TSLA"]
 
     def test_remove_ticker(self):
         """Test removing a ticker."""
@@ -51,6 +68,14 @@ class TestGBMSimulator:
         """Test that removing a non-existent ticker is a no-op."""
         sim = GBMSimulator(tickers=["AAPL"])
         sim.remove_ticker("NOPE")  # Should not raise
+
+    def test_remove_ticker_normalizes_input(self):
+        """Removing lowercase/whitespace tickers should remove canonical keys."""
+        sim = GBMSimulator(tickers=["AAPL", "TSLA"])
+
+        sim.remove_ticker(" tsla ")
+
+        assert sim.get_tickers() == ["AAPL"]
 
     def test_unknown_ticker_gets_random_seed_price(self):
         """Test that unknown tickers get random seed prices."""
@@ -96,7 +121,7 @@ class TestGBMSimulator:
 
     def test_pairwise_correlation_tech_stocks(self):
         """Test that tech stocks have high correlation."""
-        corr = GBMSimulator._pairwise_correlation("AAPL", "GOOGL")
+        corr = GBMSimulator._pairwise_correlation("aapl", " googl ")
         assert corr == 0.6
 
     def test_pairwise_correlation_finance_stocks(self):
@@ -126,8 +151,8 @@ class TestGBMSimulator:
         result = sim.step()
         price_str = str(result["AAPL"])
         # Check that we have at most 2 decimal places
-        if '.' in price_str:
-            decimal_part = price_str.split('.')[1]
+        if "." in price_str:
+            decimal_part = price_str.split(".")[1]
             assert len(decimal_part) <= 2
 
     def test_all_default_tickers_can_step(self):

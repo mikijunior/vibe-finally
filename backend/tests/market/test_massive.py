@@ -44,6 +44,26 @@ class TestMassiveDataSource:
         assert cache.get_price("AAPL") == 190.50
         assert cache.get_price("GOOGL") == 175.25
 
+    async def test_poll_normalizes_snapshot_tickers(self):
+        """API snapshot casing should not leak into cache keys."""
+        cache = PriceCache()
+        source = MassiveDataSource(
+            api_key="test-key",
+            price_cache=cache,
+            poll_interval=60.0,
+        )
+        source._tickers = ["AAPL"]
+        source._client = MagicMock()
+
+        with patch.object(
+            source, "_fetch_snapshots", return_value=[_make_snapshot(" aapl ", 190.50, 0)]
+        ):
+            await source._poll_once()
+
+        assert cache.get_price("AAPL") == 190.50
+        assert cache.get(" aapl ") is None
+        assert cache.get("AAPL").timestamp == 0.0
+
     async def test_malformed_snapshot_skipped(self):
         """Test that malformed snapshots are skipped gracefully."""
         cache = PriceCache()
@@ -127,6 +147,19 @@ class TestMassiveDataSource:
         await source.add_ticker("  AAPL  ")
         assert "AAPL" in source.get_tickers()
 
+    async def test_start_normalizes_and_deduplicates_tickers(self):
+        """Startup ticker handling should match dynamic ticker handling."""
+        cache = PriceCache()
+        source = MassiveDataSource(api_key="test-key", price_cache=cache, poll_interval=60.0)
+
+        with patch("app.market.massive_client.RESTClient"):
+            with patch.object(source, "_fetch_snapshots", return_value=[]):
+                await source.start([" aapl ", "AAPL", "googl"])
+
+        assert source.get_tickers() == ["AAPL", "GOOGL"]
+
+        await source.stop()
+
     async def test_remove_ticker(self):
         """Test removing a ticker."""
         cache = PriceCache()
@@ -198,4 +231,18 @@ class TestMassiveDataSource:
         # Cache should have data immediately from the first poll
         assert cache.get_price("AAPL") == 190.50
 
+        await source.stop()
+
+    async def test_double_start_raises(self):
+        """A second active start should not leak another Massive polling task."""
+        cache = PriceCache()
+        source = MassiveDataSource(api_key="test-key", price_cache=cache, poll_interval=60.0)
+
+        with patch("app.market.massive_client.RESTClient"):
+            with patch.object(source, "_fetch_snapshots", return_value=[]):
+                await source.start(["AAPL"])
+                with pytest.raises(RuntimeError, match="already running"):
+                    await source.start(["GOOGL"])
+
+        assert source.get_tickers() == ["AAPL"]
         await source.stop()

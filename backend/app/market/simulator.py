@@ -21,6 +21,7 @@ from .seed_prices import (
     TICKER_PARAMS,
     TSLA_CORR,
 )
+from .tickers import normalize_ticker, normalize_tickers
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class GBMSimulator:
         self._cholesky: np.ndarray | None = None
 
         # Initialize all starting tickers
-        for ticker in tickers:
+        for ticker in normalize_tickers(tickers):
             self._add_ticker_internal(ticker)
         self._rebuild_cholesky()
 
@@ -119,6 +120,7 @@ class GBMSimulator:
 
     def add_ticker(self, ticker: str) -> None:
         """Add a ticker to the simulation. Rebuilds the correlation matrix."""
+        ticker = normalize_ticker(ticker)
         if ticker in self._prices:
             return
         self._add_ticker_internal(ticker)
@@ -126,6 +128,7 @@ class GBMSimulator:
 
     def remove_ticker(self, ticker: str) -> None:
         """Remove a ticker from the simulation. Rebuilds the correlation matrix."""
+        ticker = normalize_ticker(ticker)
         if ticker not in self._prices:
             return
         self._tickers.remove(ticker)
@@ -135,7 +138,7 @@ class GBMSimulator:
 
     def get_price(self, ticker: str) -> float | None:
         """Current price for a ticker, or None if not tracked."""
-        return self._prices.get(ticker)
+        return self._prices.get(normalize_ticker(ticker))
 
     def get_tickers(self) -> list[str]:
         """Return the list of currently tracked tickers."""
@@ -145,6 +148,7 @@ class GBMSimulator:
 
     def _add_ticker_internal(self, ticker: str) -> None:
         """Add a ticker without rebuilding Cholesky (for batch initialization)."""
+        ticker = normalize_ticker(ticker)
         if ticker in self._prices:
             return
         self._tickers.append(ticker)
@@ -182,6 +186,9 @@ class GBMSimulator:
           - Cross-sector:       0.3
           - Unknown tickers:    0.3
         """
+        t1 = normalize_ticker(t1)
+        t2 = normalize_ticker(t2)
+
         tech = CORRELATION_GROUPS["tech"]
         finance = CORRELATION_GROUPS["finance"]
 
@@ -217,12 +224,15 @@ class SimulatorDataSource(MarketDataSource):
         self._task: asyncio.Task | None = None
 
     async def start(self, tickers: list[str]) -> None:
+        if self._task is not None and not self._task.done():
+            raise RuntimeError("Simulator market data source is already running")
+
         self._sim = GBMSimulator(
             tickers=tickers,
             event_probability=self._event_prob,
         )
         # Seed the cache with initial prices so SSE has data immediately
-        for ticker in tickers:
+        for ticker in self._sim.get_tickers():
             price = self._sim.get_price(ticker)
             if price is not None:
                 self._cache.update(ticker=ticker, price=price)
@@ -240,6 +250,7 @@ class SimulatorDataSource(MarketDataSource):
         logger.info("Simulator stopped")
 
     async def add_ticker(self, ticker: str) -> None:
+        ticker = normalize_ticker(ticker)
         if self._sim:
             self._sim.add_ticker(ticker)
             # Seed cache immediately so the ticker has a price right away
@@ -249,6 +260,7 @@ class SimulatorDataSource(MarketDataSource):
             logger.info("Simulator: added ticker %s", ticker)
 
     async def remove_ticker(self, ticker: str) -> None:
+        ticker = normalize_ticker(ticker)
         if self._sim:
             self._sim.remove_ticker(ticker)
         self._cache.remove(ticker)

@@ -18,6 +18,7 @@ except ImportError:  # pragma: no cover - exercised when dependency is absent
 
 from .cache import PriceCache
 from .interface import MarketDataSource
+from .tickers import normalize_ticker, normalize_tickers
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,9 @@ class MassiveDataSource(MarketDataSource):
         self._client: Any | None = None
 
     async def start(self, tickers: list[str]) -> None:
+        if self._task is not None and not self._task.done():
+            raise RuntimeError("Massive market data source is already running")
+
         if RESTClient is None:
             raise RuntimeError(
                 "Massive market data requested, but the 'massive' package is not installed. "
@@ -52,7 +56,7 @@ class MassiveDataSource(MarketDataSource):
             )
 
         self._client = RESTClient(api_key=self._api_key)
-        self._tickers = [ticker.upper().strip() for ticker in tickers if ticker.strip()]
+        self._tickers = normalize_tickers(tickers)
 
         await self._poll_once()
 
@@ -75,13 +79,13 @@ class MassiveDataSource(MarketDataSource):
         logger.info("Massive poller stopped")
 
     async def add_ticker(self, ticker: str) -> None:
-        ticker = ticker.upper().strip()
+        ticker = normalize_ticker(ticker)
         if ticker and ticker not in self._tickers:
             self._tickers.append(ticker)
             logger.info("Massive: added ticker %s (will appear on next poll)", ticker)
 
     async def remove_ticker(self, ticker: str) -> None:
-        ticker = ticker.upper().strip()
+        ticker = normalize_ticker(ticker)
         self._tickers = [t for t in self._tickers if t != ticker]
         self._cache.remove(ticker)
         logger.info("Massive: removed ticker %s", ticker)
@@ -107,10 +111,16 @@ class MassiveDataSource(MarketDataSource):
                 try:
                     price = snap.last_trade.price
                     timestamp = snap.last_trade.timestamp / 1000.0
-                    self._cache.update(ticker=snap.ticker, price=price, timestamp=timestamp)
+                    self._cache.update(
+                        ticker=normalize_ticker(snap.ticker),
+                        price=price,
+                        timestamp=timestamp,
+                    )
                     processed += 1
                 except (AttributeError, TypeError) as e:
-                    logger.warning("Skipping snapshot for %s: %s", getattr(snap, "ticker", "???"), e)
+                    logger.warning(
+                        "Skipping snapshot for %s: %s", getattr(snap, "ticker", "???"), e
+                    )
             logger.debug("Massive poll: updated %d/%d tickers", processed, len(self._tickers))
         except Exception as e:
             logger.error("Massive poll failed: %s", e)
