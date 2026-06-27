@@ -9,9 +9,9 @@ FinAlly is a single-container AI-powered trading workstation streaming live mark
 ## Phases
 
 - [x] **Phase 1: Database Foundation** - SQLite schema, WAL mode, thread-safe price cache (completed 2026-06-26)
-- [ ] **Phase 2: Backend API + SSE Streaming** - REST endpoints, SSE streaming, portfolio snapshots
-- [ ] **Phase 3: LLM Integration** - LiteLLM chat with structured output and auto-trade execution
-- [ ] **Phase 4: Frontend + Docker + Testing** - All UI components, Docker deployment, E2E tests
+- [x] **Phase 2: Backend API + SSE Streaming** - REST endpoints, SSE streaming, portfolio snapshots (completed 2026-06-27)
+- [x] **Phase 3: LLM Integration** - LiteLLM chat with structured output and auto-trade execution (completed 2026-06-27)
+- [x] **Phase 4: Frontend + Docker + Testing** - All UI components, Docker deployment, E2E tests (completed 2026-06-27)
 
 ## Phase Details
 
@@ -61,9 +61,9 @@ Plans:
 
 Plans:
 
-- [ ] 02-01: Portfolio + watchlist REST endpoints (API-01, API-02, API-03, API-04, API-05, API-06, API-08)
-- [ ] 02-02: SSE streaming endpoint (SSE-01, SSE-02, SSE-03, SSE-04, SSE-05)
-- [ ] 02-03: Portfolio snapshot background task (SNAP-01, SNAP-02)
+- [x] 02-01: Portfolio + watchlist REST endpoints (API-01, API-02, API-03, API-04, API-05, API-06, API-08)
+- [x] 02-02: SSE streaming endpoint (SSE-01, SSE-02, SSE-03, SSE-04, SSE-05)
+- [x] 02-03: Portfolio snapshot background task (SNAP-01, SNAP-02)
 
 ### Phase 3: LLM Integration
 
@@ -85,8 +85,8 @@ Plans:
 
 Plans:
 
-- [ ] 03-01: LiteLLM client + chat endpoint (LLM-01, LLM-02, LLM-03, LLM-04, API-07)
-- [ ] 03-02: Auto-execution + retry logic + mock mode (LLM-05, LLM-06, LLM-07)
+- [x] 03-01: LiteLLM client + chat endpoint (LLM-01, LLM-02, LLM-03, LLM-04, API-07)
+- [x] 03-02: Auto-execution + retry logic + mock mode (LLM-05, LLM-06, LLM-07)
 
 ### Phase 4: Frontend + Docker + Testing
 
@@ -110,18 +110,18 @@ Plans:
 
 Plans:
 
-- [ ] 04-01: Frontend setup + watchlist + main chart (FE-01, FE-02, FE-03, FE-04, FE-05, WL-01, WL-02, WL-03, WL-04, WL-05, WL-06, CH-01, CH-02, CH-03, CH-04)
-- [ ] 04-02: Portfolio visualizations + trade bar + chat + header (PF-01, PF-02, PF-03, PF-04, PF-05, TB-01, TB-02, TB-03, TB-04, TB-05, TB-06, TB-07, CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, CHAT-06, CHAT-07, HDR-01, HDR-02, HDR-03)
-- [ ] 04-03: Docker deployment + E2E tests (DOCKER-01, DOCKER-02, DOCKER-03, DOCKER-04, DOCKER-05, DOCKER-06, DOCKER-07, DOCKER-08, DOCKER-09, TEST-01, TEST-02, TEST-03)
+- [x] 04-01: Frontend setup + watchlist + main chart (FE-01, FE-02, FE-03, FE-04, FE-05, WL-01, WL-02, WL-03, WL-04, WL-05, WL-06, CH-01, CH-02, CH-03, CH-04)
+- [x] 04-02: Portfolio visualizations + trade bar + chat + header (PF-01, PF-02, PF-03, PF-04, PF-05, TB-01, TB-02, TB-03, TB-04, TB-05, TB-06, TB-07, CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, CHAT-06, CHAT-07, HDR-01, HDR-02, HDR-03)
+- [x] 04-03: Docker deployment + E2E tests (DOCKER-01, DOCKER-02, DOCKER-03, DOCKER-04, DOCKER-05, DOCKER-06, DOCKER-07, DOCKER-08, DOCKER-09, TEST-01, TEST-02, TEST-03)
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Database Foundation | 3/3 | Complete   | 2026-06-26 |
-| 2. Backend API + SSE Streaming | 0/3 | Not started | - |
-| 3. LLM Integration | 0/2 | Not started | - |
-| 4. Frontend + Docker + Testing | 0/3 | Not started | - |
+| 1. Database Foundation | 3/3 | Complete    | 2026-06-26 |
+| 2. Backend API + SSE Streaming | 3/3 | Complete    | 2026-06-27 |
+| 3. LLM Integration | 2/2 | Complete    | 2026-06-27 |
+| 4. Frontend + Docker + Testing | 3/3 | Complete    | 2026-06-27 |
 
 ## Coverage
 

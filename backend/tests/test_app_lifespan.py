@@ -159,7 +159,8 @@ def test_lifespan_shutdown_stops_source_and_closes_db(fresh_db, testing_env, mon
     from app.main import app
 
     # Create client inside this test so we control shutdown
-    with TestClient(app) as test_client:
+    # (TestClient's __exit__ triggers lifespan shutdown — assignment unused by design)
+    with TestClient(app):
         # Pre-shutdown: verify everything is initialized
         assert main.state.market_source is not None
         assert main.state.price_cache is not None

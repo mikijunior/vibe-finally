@@ -1,9 +1,6 @@
 """Repository for users_profile table."""
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
-
 from ..cents import from_cents, to_cents
 from ..connection import get_db
 

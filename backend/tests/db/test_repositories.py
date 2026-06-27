@@ -76,7 +76,6 @@ class TestCentsHelpers:
 @pytest.mark.asyncio
 async def test_get_returns_default_user_with_cents_converted(db_conn):
     """cash_balance is returned as dollars, raw DB row is cents."""
-    from app.db.cents import to_cents
     from app.db.repositories import UserRepository
 
     repo = UserRepository()

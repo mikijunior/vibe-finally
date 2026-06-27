@@ -5,8 +5,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-import aiosqlite
-
 from ..connection import get_db
 
 DEFAULT_USER_ID = "default"

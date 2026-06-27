@@ -24,18 +24,15 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
-import threading
 import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import httpx
-import pytest
 import uvicorn
 from fastapi import FastAPI
 
 from app.market import PriceCache, create_stream_router
-
 
 # ---------------------------------------------------------------------------
 # Integration helpers (real uvicorn + httpx async client)

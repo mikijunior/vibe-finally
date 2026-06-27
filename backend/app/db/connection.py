@@ -16,9 +16,12 @@ def _project_root() -> Path:
     """Return the project root directory.
 
     The file lives at backend/app/db/connection.py.
-    parents[3] = backend/app/db/ -> backend/app/ -> backend/ -> project root.
+    parents[0] = backend/app/db/  (this file's dir)
+    parents[1] = backend/app/
+    parents[2] = backend/
+    parents[3] = project root
     """
-    return Path(__file__).resolve().parents[3].parent
+    return Path(__file__).resolve().parents[3]
 
 
 DB_PATH = _project_root() / "db" / "finally.db"
