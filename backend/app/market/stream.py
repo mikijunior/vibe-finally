@@ -15,6 +15,9 @@ from .cache import PriceCache
 
 logger = logging.getLogger(__name__)
 
+# Module-level singleton router for ``app.main``. Each ``create_stream_router``
+# call creates its OWN ``APIRouter`` so tests that construct an isolated
+# FastAPI app + fresh PriceCache aren't affected by routes registered earlier.
 router = APIRouter(prefix="/api/stream", tags=["streaming"])
 
 # Inner polling cadence — how often we check the cache for a new version.
@@ -49,9 +52,14 @@ def create_stream_router(price_cache: PriceCache | callable) -> APIRouter:
 
     The ``price_cache`` argument may be either a ``PriceCache`` instance or a
     zero-arg callable returning one — see ``_resolve_cache`` for details.
-    """
 
-    @router.get("/prices")
+    Each call returns a fresh ``APIRouter`` so tests with isolated
+    ``PriceCache`` instances aren't tied to the module-level singleton
+    registered by ``app.main``.
+    """
+    local_router = APIRouter(prefix="/api/stream", tags=["streaming"])
+
+    @local_router.get("/prices")
     async def stream_prices(request: Request) -> StreamingResponse:
         """SSE endpoint for live price updates.
 
@@ -77,7 +85,7 @@ def create_stream_router(price_cache: PriceCache | callable) -> APIRouter:
             },
         )
 
-    return router
+    return local_router
 
 
 async def _generate_events(
