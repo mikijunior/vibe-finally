@@ -163,3 +163,60 @@ class WatchlistMutationResponse(BaseModel):
     ticker: str
     action: str  # "added" | "removed"
     already_present: bool
+
+
+# ---------------------------------------------------------------------------
+# Chat (LLM)
+# ---------------------------------------------------------------------------
+
+
+class ChatRequest(BaseModel):
+    """Request body for ``POST /api/chat``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("message")
+    @classmethod
+    def _reject_whitespace_only(cls, value: str) -> str:
+        """Reject messages that are empty after stripping whitespace."""
+        if not value.strip():
+            raise ValueError("message must not be whitespace-only")
+        return value
+
+
+class ChatActionResult(BaseModel):
+    """One auto-executed action (trade or watchlist change) reported back.
+
+    For ``type='trade'``: ``side`` and ``quantity`` are populated.
+    For ``type='watchlist'``: ``action`` ('add' | 'remove') is populated.
+    ``detail`` carries a human-readable status when ``status == 'failed'``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: str  # "trade" | "watchlist"
+    ticker: str
+    status: str  # "executed" | "failed"
+    detail: str | None = None
+    side: str | None = None
+    quantity: float | None = None
+    action: str | None = None
+
+
+class ChatEndpointResponse(BaseModel):
+    """Response body for ``POST /api/chat``.
+
+    ``trades`` and ``watchlist_changes`` are the parsed LLM output (what the
+    model proposed). ``actions_executed`` is the runtime record of what was
+    actually applied to the user's portfolio — empty when the executor
+    module is not yet wired (Plan 03-02 activates it).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    message: str
+    trades: list[dict[str, Any]]
+    watchlist_changes: list[dict[str, Any]]
+    actions_executed: list[ChatActionResult]

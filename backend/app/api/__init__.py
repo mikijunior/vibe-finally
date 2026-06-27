@@ -1,10 +1,11 @@
 """Public REST API surface for FinAlly.
 
-This package exposes three FastAPI routers:
+This package exposes four FastAPI routers:
 
 - ``portfolio_router`` — portfolio snapshot, market-order execution, and history
 - ``watchlist_router`` — watchlist CRUD with cache/source sync
 - ``system_router`` — public ``/api/health`` alias
+- ``chat_router`` — LLM-backed ``/api/chat`` endpoint
 
 Each router is mounted in ``app.main`` under its declared prefix. Repositories
 live in ``app.db.repositories`` and are wired in via ``deps.py`` so handlers
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__all__ = ["portfolio_router", "watchlist_router", "system_router"]
+__all__ = ["portfolio_router", "watchlist_router", "system_router", "chat_router"]
 
 
 def __getattr__(name: str):
@@ -29,4 +30,6 @@ def __getattr__(name: str):
         return import_module("app.api.watchlist").router
     if name == "system_router":
         return import_module("app.api.system").router
+    if name == "chat_router":
+        return import_module("app.api.chat").router
     raise AttributeError(f"module 'app.api' has no attribute {name!r}")

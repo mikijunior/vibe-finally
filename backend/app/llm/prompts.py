@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-
 SYSTEM_PROMPT: str = """\
 You are FinAlly, an AI trading assistant embedded in a simulated trading \
 workstation. You help a single user analyze their portfolio, manage their \

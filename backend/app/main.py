@@ -10,11 +10,16 @@ from __future__ import annotations
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from fastapi import FastAPI
 
-from app.api import portfolio_router, system_router, watchlist_router
+from app.api import (
+    chat_router,
+    portfolio_router,
+    system_router,
+    watchlist_router,
+)
 from app.db import close_db, init_db
 from app.db.repositories import WatchlistRepository
 from app.db.seed import DEFAULT_TICKERS
@@ -128,10 +133,11 @@ app = FastAPI(title="FinAlly", version="0.1.0", lifespan=lifespan)
 # Mount SSE stream router using a callable to avoid the import-time None problem
 app.include_router(create_stream_router(_get_cache))
 
-# Mount REST API routers (system first, then alphabetical by feature)
+# Mount REST API routers (alphabetical by feature)
+app.include_router(chat_router)
+app.include_router(portfolio_router)
 app.include_router(system_router)
 app.include_router(watchlist_router)
-app.include_router(portfolio_router)
 
 
 @app.get("/health")

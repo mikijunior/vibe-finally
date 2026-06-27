@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import HTTPException, Request, status
 
 from app.db.repositories import (
+    ChatRepository,
     PositionRepository,
     SnapshotRepository,
     TradeRepository,
@@ -63,3 +64,8 @@ async def get_snapshot_repo() -> SnapshotRepository:
 async def get_watchlist_repo() -> WatchlistRepository:
     """Return a fresh ``WatchlistRepository``."""
     return WatchlistRepository()
+
+
+async def get_chat_repo() -> ChatRepository:
+    """Return a fresh ``ChatRepository``."""
+    return ChatRepository()
