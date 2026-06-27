@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 
+import app.main as main
 from app.db.repositories import (
     PositionRepository,
     TradeRepository,
@@ -25,7 +26,6 @@ from app.llm.executor import (
     execute_actions,
 )
 from app.llm.schemas import ChatResponse, TradeAction, WatchlistChange
-import app.main as main
 
 
 @pytest.fixture

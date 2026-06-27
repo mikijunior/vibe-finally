@@ -21,18 +21,21 @@ def _force_mock_llm(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_chat_happy_path_with_mock(seeded_client):
-    """POST /api/chat returns 200 with the mock LLM's message echoed back."""
+    """POST /api/chat returns 200 with the mock LLM's message echoed back.
+
+    Plan 03-02's keyword-routed MockLLMClient returns ``Mock portfolio
+    summary for: <msg>`` for messages with no recognized keyword.
+    """
     response = seeded_client.post(
         "/api/chat", json={"message": "What's my portfolio?"}
     )
     assert response.status_code == 200, response.text
     body = response.json()
 
-    assert body["message"].startswith("Mock response to:")
+    assert "Mock portfolio summary" in body["message"]
     assert "What's my portfolio?" in body["message"]
     assert body["trades"] == []
     assert body["watchlist_changes"] == []
-    # Executor not yet wired (Plan 03-02) — actions_executed must be empty.
     assert body["actions_executed"] == []
 
 
@@ -50,7 +53,7 @@ async def test_chat_persists_user_and_assistant_messages(seeded_client):
     assert rows[0]["actions"] is None
 
     assert rows[1]["role"] == "assistant"
-    assert rows[1]["content"].startswith("Mock response to:")
+    assert "Mock portfolio summary" in rows[1]["content"]
     assert rows[1]["actions"] is not None
     assert "trades" in rows[1]["actions"]
     assert "watchlist_changes" in rows[1]["actions"]
@@ -120,7 +123,7 @@ async def test_chat_model_override_query_param(seeded_client, monkeypatch):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["message"].startswith("Mock response to:")
+    assert "Mock portfolio summary" in body["message"]
 
 
 @pytest.mark.asyncio
@@ -199,7 +202,142 @@ async def test_chat_response_matches_schema(seeded_client):
     # Validate via Pydantic — extra="forbid" is enforced on the input side;
     # response side allows extra fields in JSON but our shape is well-defined.
     parsed = ChatEndpointResponse.model_validate(body)
-    assert parsed.message.startswith("Mock response to:")
+    assert "Mock portfolio summary" in parsed.message
     assert isinstance(parsed.trades, list)
     assert isinstance(parsed.watchlist_changes, list)
     assert isinstance(parsed.actions_executed, list)
+
+
+# ---------------------------------------------------------------------------
+# Plan 03-02: executor wired into the chat endpoint
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_chat_executes_trade_with_mock(seeded_client):
+    """``POST /api/chat`` with ``buy 1 AAPL`` executes a real trade end-to-end."""
+    response = seeded_client.post("/api/chat", json={"message": "buy 1 AAPL"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    assert len(body["actions_executed"]) == 1
+    action = body["actions_executed"][0]
+    assert action["type"] == "trade"
+    assert action["ticker"] == "AAPL"
+    assert action["side"] == "buy"
+    assert action["status"] == "executed"
+    assert action["quantity"] == 1.0
+
+    # Verify DB side-effect: AAPL position now exists with quantity=1.
+    portfolio = seeded_client.get("/api/portfolio")
+    assert portfolio.status_code == 200
+    portfolio_body = portfolio.json()
+    aapl = next(
+        (p for p in portfolio_body["positions"] if p["ticker"] == "AAPL"), None
+    )
+    assert aapl is not None
+    assert aapl["quantity"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_chat_watchlist_add_with_mock(seeded_client):
+    """``POST /api/chat`` with ``add PYPL`` persists a watchlist row."""
+    response = seeded_client.post("/api/chat", json={"message": "add PYPL"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    assert len(body["actions_executed"]) == 1
+    action = body["actions_executed"][0]
+    assert action["type"] == "watchlist"
+    assert action["ticker"] == "PYPL"
+    assert action["status"] == "executed"
+
+    # Verify DB side-effect: GET /api/watchlist lists PYPL.
+    watchlist = seeded_client.get("/api/watchlist")
+    assert watchlist.status_code == 200
+    tickers = [e["ticker"] for e in watchlist.json()["entries"]]
+    assert "PYPL" in tickers
+
+
+@pytest.mark.asyncio
+async def test_chat_per_action_failure_does_not_500(seeded_client):
+    """A sell with no position fails per-action; the chat returns 200 with detail."""
+    response = seeded_client.post("/api/chat", json={"message": "sell 5 NVDA"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    assert len(body["actions_executed"]) == 1
+    action = body["actions_executed"][0]
+    assert action["type"] == "trade"
+    assert action["ticker"] == "NVDA"
+    assert action["side"] == "sell"
+    assert action["status"] == "failed"
+    assert "Insufficient shares" in (action.get("detail") or "")
+
+    # No trade row inserted.
+    from app.db.repositories import TradeRepository
+
+    repo = TradeRepository()
+    all_trades = await repo.list_all()
+    nvda_sells = [t for t in all_trades if t["ticker"] == "NVDA" and t["side"] == "sell"]
+    assert nvda_sells == []
+
+
+@pytest.mark.asyncio
+async def test_chat_persists_actions_executed(seeded_client):
+    """A successful trade is persisted in ``chat_messages.actions`` JSON."""
+    response = seeded_client.post("/api/chat", json={"message": "buy 1 AAPL"})
+    assert response.status_code == 200
+
+    repo = ChatRepository()
+    rows = await repo.list_all()
+    assert len(rows) == 2
+    assistant = rows[1]
+    assert assistant["role"] == "assistant"
+    actions = assistant["actions"]
+    assert actions is not None
+    assert "actions_executed" in actions
+    assert len(actions["actions_executed"]) == 1
+    persisted = actions["actions_executed"][0]
+    assert persisted["type"] == "trade"
+    assert persisted["ticker"] == "AAPL"
+    assert persisted["status"] == "executed"
+
+
+@pytest.mark.asyncio
+async def test_chat_retries_on_malformed_then_succeeds(seeded_client, monkeypatch):
+    """A bad first response triggers a retry; the second response is returned."""
+
+    call_count = {"n": 0}
+
+    real_complete = MockLLMClient.complete
+
+    async def flaky_complete(self, messages, *, reasoning_effort="low"):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return "not valid json"
+        return await real_complete(self, messages, reasoning_effort=reasoning_effort)
+
+    monkeypatch.setattr(MockLLMClient, "complete", flaky_complete)
+
+    response = seeded_client.post("/api/chat", json={"message": "buy 1 AAPL"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    # Second call succeeded, so the trade executed normally.
+    assert len(body["actions_executed"]) == 1
+    assert body["actions_executed"][0]["status"] == "executed"
+    assert call_count["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_chat_returns_503_after_retry_exhaustion(seeded_client, monkeypatch):
+    """When both attempts return bad JSON, the chat endpoint returns 503."""
+
+    async def always_bad(self, messages, *, reasoning_effort="low"):
+        return "still not json"
+
+    monkeypatch.setattr(MockLLMClient, "complete", always_bad)
+
+    response = seeded_client.post("/api/chat", json={"message": "buy 1 AAPL"})
+    assert response.status_code == 503, response.text
+    assert "LLM call failed" in response.json()["detail"]

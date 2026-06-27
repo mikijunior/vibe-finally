@@ -15,7 +15,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from .client import LLMClient, LLMError, LLMValidationError
+from .client import LLMClient, LLMValidationError
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -66,7 +66,7 @@ class RetryingLLMClient(LLMClient):
             return await self._inner.complete_structured(
                 messages, response_model, reasoning_effort=reasoning_effort
             )
-        except LLMValidationError as first_exc:
+        except LLMValidationError:
             retry_messages = list(messages) + [CORRECTIVE_SYSTEM_MESSAGE]
             try:
                 return await self._inner.complete_structured(
@@ -97,7 +97,7 @@ async def retry_structured_completion(
         return await client.complete_structured(
             messages, response_model, reasoning_effort=reasoning_effort
         )
-    except LLMValidationError as first_exc:
+    except LLMValidationError:
         retry_messages = list(messages) + [CORRECTIVE_SYSTEM_MESSAGE]
         try:
             return await client.complete_structured(

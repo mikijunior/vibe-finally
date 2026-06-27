@@ -13,8 +13,6 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from .schemas import ChatResponse
-
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -141,9 +139,23 @@ class MockLLMClient:
         *,
         reasoning_effort: str = "low",
     ) -> T:
-        """Parse the JSON returned by ``complete`` into the given Pydantic model."""
+        """Parse the JSON returned by ``complete`` into the given Pydantic model.
+
+        Mirrors ``LLMClient.complete_structured``: ``ValidationError`` is
+        wrapped in ``LLMValidationError`` so the retry wrapper can act on it
+        uniformly across mock and real clients.
+        """
+        from pydantic import ValidationError
+
+        from .client import LLMValidationError
+
         content = await self.complete(messages, reasoning_effort=reasoning_effort)
-        return response_model.model_validate_json(content)
+        try:
+            return response_model.model_validate_json(content)
+        except ValidationError as exc:
+            raise LLMValidationError(
+                f"malformed structured output: {exc}", raw_response=content
+            ) from exc
 
 
 __all__ = ["MockLLMClient"]

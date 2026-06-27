@@ -11,39 +11,45 @@ from app.llm import (
     LLMClient,
     LLMError,
     MockLLMClient,
+    RetryingLLMClient,
     create_llm_client,
 )
 
 
 def test_create_returns_real_client_when_mock_off(monkeypatch):
-    """With LLM_MOCK unset, create_llm_client returns a real LLMClient."""
+    """With LLM_MOCK unset, create_llm_client returns a RetryingLLMClient wrapping LLMClient."""
     monkeypatch.delenv("LLM_MOCK", raising=False)
     client = create_llm_client()
+    # Plan 03-02 wraps everything in RetryingLLMClient.
+    assert isinstance(client, RetryingLLMClient)
     assert isinstance(client, LLMClient)
-    assert not isinstance(client, MockLLMClient)
+    assert not isinstance(client._inner, MockLLMClient)
+    assert isinstance(client._inner, LLMClient)
 
 
 def test_create_returns_mock_when_env_true(monkeypatch):
-    """LLM_MOCK=true routes to MockLLMClient."""
+    """LLM_MOCK=true routes to a RetryingLLMClient wrapping MockLLMClient."""
     monkeypatch.setenv("LLM_MOCK", "true")
     client = create_llm_client()
-    assert isinstance(client, MockLLMClient)
+    assert isinstance(client, RetryingLLMClient)
+    assert isinstance(client._inner, MockLLMClient)
 
 
 def test_create_returns_mock_when_env_yes(monkeypatch):
-    """LLM_MOCK=yes (alternate truthy value) routes to MockLLMClient."""
+    """LLM_MOCK=yes (alternate truthy value) routes to MockLLMClient inner."""
     monkeypatch.setenv("LLM_MOCK", "yes")
     client = create_llm_client()
-    assert isinstance(client, MockLLMClient)
+    assert isinstance(client, RetryingLLMClient)
+    assert isinstance(client._inner, MockLLMClient)
 
 
 async def test_mock_client_complete_returns_json():
-    """MockLLMClient.complete returns a JSON string containing the user message."""
+    """MockLLMClient.complete returns a JSON string routed by keyword."""
     client = MockLLMClient()
     result = await client.complete([{"role": "user", "content": "hi"}])
     assert isinstance(result, str)
     assert result.startswith('{"message"')
-    assert "Mock response to: hi" in result
+    assert "Mock portfolio summary for: hi" in result
 
 
 async def test_mock_client_complete_structured_parses():
@@ -54,7 +60,7 @@ async def test_mock_client_complete_structured_parses():
         ChatResponse,
     )
     assert isinstance(response, ChatResponse)
-    assert "Mock response to: hello" in response.message
+    assert "Mock portfolio summary" in response.message
     assert response.trades == []
     assert response.watchlist_changes == []
 

@@ -154,7 +154,6 @@ def create_llm_client() -> LLMClient:
 # this module) continue to work. Implementation lives in ``app.llm.mock``.
 from .mock import MockLLMClient  # noqa: E402
 
-
 __all__ = [
     "LLMClient",
     "LLMError",
