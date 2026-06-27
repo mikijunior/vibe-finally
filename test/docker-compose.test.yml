@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: finally:test
+    container_name: finally-test-app
+    environment:
+      - LLM_MOCK=true
+      - OPENROUTER_API_KEY=mock-not-used
+      - TESTING=1
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.49.0-jammy
+    container_name: finally-test-pw
+    depends_on:
+      app:
+        condition: service_healthy
+    working_dir: /tests
+    volumes:
+      - ./:/tests
+    command: ["npx", "playwright", "test", "--reporter=line"]
