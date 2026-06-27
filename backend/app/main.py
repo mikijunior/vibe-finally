@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from fastapi import FastAPI
 
+from app.api import portfolio_router, system_router, watchlist_router
 from app.db import close_db, init_db
 from app.db.repositories import WatchlistRepository
 from app.db.seed import DEFAULT_TICKERS
@@ -65,6 +66,11 @@ async def lifespan(app: FastAPI):
     state.price_cache = PriceCache()
     state.market_source = create_market_data_source(state.price_cache)
 
+    # Expose shared singletons on app.state so API dependencies can resolve
+    # them via `request.app.state` regardless of test overrides.
+    app.state.price_cache = state.price_cache
+    app.state.market_source = state.market_source
+
     # Load current watchlist from DB; fall back to defaults if empty
     repo = WatchlistRepository()
     watchlist_rows = await repo.get_all()
@@ -83,6 +89,9 @@ async def lifespan(app: FastAPI):
     if state.price_cache is not None:
         state.price_cache = None
 
+    app.state.price_cache = None
+    app.state.market_source = None
+
     await close_db()
 
 
@@ -90,6 +99,11 @@ app = FastAPI(title="FinAlly", version="0.1.0", lifespan=lifespan)
 
 # Mount SSE stream router using a callable to avoid the import-time None problem
 app.include_router(create_stream_router(_get_cache))
+
+# Mount REST API routers (system first, then alphabetical by feature)
+app.include_router(system_router)
+app.include_router(watchlist_router)
+app.include_router(portfolio_router)
 
 
 @app.get("/health")
