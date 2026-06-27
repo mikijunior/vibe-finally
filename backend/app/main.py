@@ -7,6 +7,7 @@ watchlist and the live market data system.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from app.market import (
     create_market_data_source,
     create_stream_router,
 )
+from app.snapshots import start_snapshot_loop
 
 
 @dataclass
@@ -31,6 +33,8 @@ class AppState:
 
     price_cache: PriceCache | None = None
     market_source: MarketDataSource | None = None
+    snapshot_task: asyncio.Task | None = None
+    _snapshot_stop: asyncio.Event | None = None
 
 
 # Module-level singleton so test code can access and reset state
@@ -79,9 +83,32 @@ async def lifespan(app: FastAPI):
         tickers = list(DEFAULT_TICKERS)
 
     await state.market_source.start(tickers)
+
+    # Start the snapshot loop AFTER the market source is up so the loop
+    # sees live prices from its first iteration onward (SNAP-01).
+    state._snapshot_stop = asyncio.Event()
+    state.snapshot_task = start_snapshot_loop(
+        state.price_cache, state._snapshot_stop, interval_seconds=30.0
+    )
+    app.state.snapshot_stop = state._snapshot_stop
+
     yield
 
     # Shutdown
+    # Stop the snapshot loop BEFORE closing the DB so the in-flight insert
+    # (if any) doesn't race with close_db().
+    if getattr(state, "_snapshot_stop", None) is not None:
+        state._snapshot_stop.set()
+    task = getattr(state, "snapshot_task", None)
+    if task is not None and not task.done():
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+    state.snapshot_task = None
+    state._snapshot_stop = None
+
     if state.market_source is not None:
         await state.market_source.stop()
         state.market_source = None
@@ -91,6 +118,7 @@ async def lifespan(app: FastAPI):
 
     app.state.price_cache = None
     app.state.market_source = None
+    app.state.snapshot_stop = None
 
     await close_db()
 
