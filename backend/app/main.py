@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     chat_router,
@@ -144,6 +145,25 @@ app.include_router(watchlist_router)
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+# Mount the Next.js static export on "/" AFTER all API routers so that
+# /api/* routes take precedence (FastAPI/Starlette resolves routes in
+# registration order). The directory is created by the Dockerfile when
+# running in production; in dev (uvicorn outside Docker) we skip the
+# mount gracefully if /app/static is absent.
+_STATIC_DIR = "/app/static"
+if os.path.isdir(_STATIC_DIR):
+    app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="static")
+else:
+    import logging
+
+    logging.getLogger("finally").warning(
+        "Static directory %s not found; skipping static mount. "
+        "The API will respond but the frontend will not be served. "
+        "Run via Docker or build frontend/out/ and set FINALLY_STATIC_DIR.",
+        _STATIC_DIR,
+    )
 
 
 if os.environ.get("TESTING") == "1":
