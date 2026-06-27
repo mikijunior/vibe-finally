@@ -24,3 +24,21 @@ body {
   background-color: var(--color-bg-base);
   min-height: 100vh;
 }
+
+/* Explicit utility shortcuts. Tailwind v4 generates these from the @theme
+ * tokens, but we declare them here to guarantee they are available even if
+ * Tailwind's content scanner misses a dynamic className. */
+@layer utilities {
+  .text-pnl-up {
+    color: var(--color-pnl-up);
+  }
+  .text-pnl-down {
+    color: var(--color-pnl-down);
+  }
+  .bg-pnl-up {
+    background-color: var(--color-pnl-up);
+  }
+  .bg-pnl-down {
+    background-color: var(--color-pnl-down);
+  }
+}
