@@ -30,10 +30,16 @@ interface SparklineProps {
 const COLOR_UP = "#22c55e";
 const COLOR_DOWN = "#ef4444";
 
+// Stable empty-array reference — required so the Zustand selector returns
+// the same value across renders. Returning a fresh `[]` literal here would
+// trigger React's "getServerSnapshot should be cached" infinite-loop guard
+// because the store would see a new reference every call.
+const EMPTY_POINTS: number[] = [];
+
 export function Sparkline({
   ticker,
-  width = 80,
-  height = 32,
+  width = 72,
+  height = 28,
   timestamp,
 }: SparklineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -42,7 +48,7 @@ export function Sparkline({
   const lastTimeRef = useRef<UTCTimestamp | null>(null);
   const bufferRef = useRef<number[]>([]);
 
-  const points = usePriceStore((s) => s.sparklines[ticker] ?? []);
+  const points = usePriceStore((s) => s.sparklines[ticker] ?? EMPTY_POINTS);
 
   // Create the chart once per ticker. Remove on unmount or ticker change.
   useEffect(() => {
@@ -55,6 +61,7 @@ export function Sparkline({
       layout: {
         background: { color: "transparent" },
         textColor: "transparent",
+        attributionLogo: false,
       },
       grid: {
         vertLines: { visible: false },
@@ -150,7 +157,7 @@ export function Sparkline({
     <div
       ref={containerRef}
       style={{ width, height }}
-      className="rounded"
+      className="overflow-hidden rounded"
       data-testid={`sparkline-${ticker}`}
     />
   );

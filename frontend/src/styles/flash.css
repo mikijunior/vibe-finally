@@ -25,3 +25,22 @@
 .flash-down {
   animation: flash-down 500ms ease-out;
 }
+
+/* Header total-value flash — the one bold moment of color in the UI.
+ * Briefly renders the value in amber when the live tick pushes it up,
+ * then fades back to the standard text color. Applied imperatively by
+ * Header.tsx via a transient className. */
+@keyframes value-flash-up {
+  0% {
+    color: var(--color-accent-yellow);
+    text-shadow: 0 0 12px rgba(236, 173, 10, 0.35);
+  }
+  100% {
+    color: var(--color-text-primary);
+    text-shadow: none;
+  }
+}
+
+.value-flash-up {
+  animation: value-flash-up 600ms ease-out;
+}

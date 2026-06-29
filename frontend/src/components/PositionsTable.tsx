@@ -17,7 +17,7 @@ export function PositionsTable() {
 
   if (isLoading && !portfolio) {
     return (
-      <div className="bg-bg-elevated border-border-muted flex h-64 items-center justify-center rounded border p-2">
+      <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 items-center justify-center rounded border p-2">
         <span className="text-text-muted font-mono text-xs">Loading positions…</span>
       </div>
     );
@@ -26,7 +26,7 @@ export function PositionsTable() {
   const positions = portfolio?.positions ?? [];
 
   return (
-    <div className="bg-bg-elevated border-border-muted flex h-64 flex-col gap-2 rounded border p-2">
+    <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 flex-col gap-2 rounded border p-2">
       <div className="flex items-baseline justify-between">
         <span className="text-text-muted font-mono text-[10px] uppercase tracking-wider">
           Positions

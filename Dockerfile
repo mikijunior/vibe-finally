@@ -13,7 +13,7 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN pip install --no-cache-dir uv==0.5.11
 WORKDIR /app
-COPY backend/pyproject.toml backend/uv.lock* ./backend/
+COPY backend/pyproject.toml backend/uv.lock* backend/README.md ./backend/
 WORKDIR /app/backend
 RUN uv sync --frozen --no-dev || uv sync --no-dev
 COPY backend/ ./

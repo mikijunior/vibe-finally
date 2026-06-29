@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDollars } from "@/lib/format";
 import { usePriceStream } from "@/lib/price-stream";
@@ -47,6 +47,27 @@ export function Header() {
     return portfolio.cash_balance + positionsValue;
   }, [portfolio, prices]);
 
+  // Signature flash: when an SSE tick pushes totalValue above the previous
+  // value, briefly render it in amber so the dashboard reads as live gear.
+  const prevTotalRef = useRef<number | null>(null);
+  const [flashClass, setFlashClass] = useState<string>("");
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (totalValue === null) return;
+    const prev = prevTotalRef.current;
+    prevTotalRef.current = totalValue;
+    if (prev === null) return;
+    if (totalValue <= prev) return; // only flash on upticks
+
+    setFlashClass("value-flash-up");
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlashClass(""), 600);
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, [totalValue]);
+
   const dotColor = STATUS_DOT_COLORS[connectionStatus];
   const statusLabel = STATUS_LABELS[connectionStatus];
 
@@ -67,7 +88,7 @@ export function Header() {
             Total Value
           </span>
           <span
-            className="text-text-primary font-mono text-lg font-bold"
+            className={`text-text-primary font-mono text-lg font-bold tabular-nums ${flashClass}`}
             data-testid="header-total-value"
           >
             {totalValue !== null ? formatDollars(totalValue) : isLoading ? "…" : "$0.00"}

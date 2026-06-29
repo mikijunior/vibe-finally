@@ -43,19 +43,20 @@ export function PnLChart() {
       height: 240,
       layout: {
         background: { color: "transparent" },
-        textColor: "#8b95a5",
+        textColor: "#7d8a9b",
+        attributionLogo: false,
       },
       grid: {
-        vertLines: { color: "#2a2f3a" },
-        horzLines: { color: "#2a2f3a" },
+        vertLines: { color: "#243043" },
+        horzLines: { color: "#243043" },
       },
       timeScale: {
-        borderColor: "#2a2f3a",
+        borderColor: "#243043",
         timeVisible: true,
         secondsVisible: true,
       },
       rightPriceScale: {
-        borderColor: "#2a2f3a",
+        borderColor: "#243043",
       },
       handleScroll: true,
       handleScale: true,
@@ -162,7 +163,7 @@ export function PnLChart() {
   const hasData = (history?.snapshots.length ?? 0) > 0;
 
   return (
-    <div className="bg-bg-elevated border-border-muted flex h-64 flex-col gap-2 rounded border p-2">
+    <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 flex-col gap-2 rounded border p-2">
       <div className="flex items-baseline justify-between">
         <span className="text-text-muted font-mono text-[10px] uppercase tracking-wider">
           Portfolio Value Over Time

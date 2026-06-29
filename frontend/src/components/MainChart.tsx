@@ -24,13 +24,18 @@ import { useSelectedTicker } from "@/lib/hooks/useSelectedTicker";
 const COLOR_UP = "#22c55e";
 const COLOR_DOWN = "#ef4444";
 
+// Stable empty-array reference — returning a fresh `[]` literal here would
+// trigger React 19's "getServerSnapshot should be cached" infinite-loop guard
+// because Zustand would see a new reference on every render.
+const EMPTY_SPARKLINE: number[] = [];
+
 export function MainChart() {
   const selectedTicker = useSelectedTicker((s) => s.selectedTicker);
   const prices = usePriceStore((s) =>
     selectedTicker ? s.prices[selectedTicker] : undefined,
   );
   const sparkline = usePriceStore((s) =>
-    selectedTicker ? s.sparklines[selectedTicker] ?? [] : [],
+    selectedTicker ? s.sparklines[selectedTicker] ?? EMPTY_SPARKLINE : EMPTY_SPARKLINE,
   );
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -46,22 +51,23 @@ export function MainChart() {
 
     const chart = createChart(container, {
       width: container.clientWidth || 600,
-      height: 480,
+      height: container.clientHeight || 360,
       layout: {
-        background: { color: "#0d1117" },
-        textColor: "#8b95a5",
+        background: { color: "#0b0e14" },
+        textColor: "#7d8a9b",
+        attributionLogo: false,
       },
       grid: {
-        vertLines: { color: "#2a2f3a" },
-        horzLines: { color: "#2a2f3a" },
+        vertLines: { color: "#243043" },
+        horzLines: { color: "#243043" },
       },
       timeScale: {
-        borderColor: "#2a2f3a",
+        borderColor: "#243043",
         timeVisible: true,
         secondsVisible: true,
       },
       rightPriceScale: {
-        borderColor: "#2a2f3a",
+        borderColor: "#243043",
       },
     });
 
@@ -83,6 +89,7 @@ export function MainChart() {
       if (containerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
           width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
         });
       }
     };
@@ -179,7 +186,7 @@ export function MainChart() {
 
   if (!selectedTicker) {
     return (
-      <div className="bg-bg-elevated border-border-muted flex h-[480px] items-center justify-center rounded border">
+      <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 w-full items-center justify-center rounded border">
         <span className="text-text-muted font-mono text-sm">
           Select a ticker from the watchlist to view its chart.
         </span>
@@ -188,7 +195,7 @@ export function MainChart() {
   }
 
   return (
-    <div className="bg-bg-elevated border-border-muted flex flex-col gap-2 rounded border p-3">
+    <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 w-full flex-col gap-2 rounded border p-3">
       <div className="flex items-baseline justify-between">
         <span className="text-text-primary font-mono text-lg font-bold">
           {selectedTicker}
@@ -203,7 +210,7 @@ export function MainChart() {
           </span>
         )}
       </div>
-      <div ref={containerRef} className="h-[480px] w-full" />
+      <div ref={containerRef} className="min-h-0 flex-1" />
     </div>
   );
 }

@@ -64,7 +64,7 @@ export function WatchlistPanel() {
   };
 
   return (
-    <div className="bg-bg-elevated border-border-muted flex flex-col gap-2 rounded border p-2">
+    <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 flex-col gap-2 rounded border p-2">
       <form
         onSubmit={handleAdd}
         className="flex items-center gap-2"
@@ -103,7 +103,7 @@ export function WatchlistPanel() {
           No tickers yet — add one above to get started.
         </div>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-0.5">
           {entries.map((entry) => {
             const isSelected = selectedTicker === entry.ticker;
             return (

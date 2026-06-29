@@ -156,7 +156,7 @@ export function PortfolioHeatmap() {
 
   if (!portfolio) {
     return (
-      <div className="bg-bg-elevated border-border-muted flex h-64 items-center justify-center rounded border p-2">
+      <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 items-center justify-center rounded border p-2">
         <span className="text-text-muted font-mono text-xs">Loading portfolio…</span>
       </div>
     );
@@ -165,7 +165,7 @@ export function PortfolioHeatmap() {
   if (tiles.length === 0) {
     return (
       <div
-        className="bg-bg-elevated border-border-muted flex h-64 flex-col items-center justify-center rounded border p-2"
+        className="bg-bg-elevated border-border-muted flex h-full min-h-0 flex-col items-center justify-center rounded border p-2"
         data-testid="portfolio-heatmap-empty"
       >
         <span className="text-text-muted font-mono text-xs uppercase tracking-wider">
@@ -179,7 +179,7 @@ export function PortfolioHeatmap() {
   }
 
   return (
-    <div className="bg-bg-elevated border-border-muted flex h-64 flex-col gap-2 rounded border p-2">
+    <div className="bg-bg-elevated border-border-muted flex h-full min-h-0 flex-col gap-2 rounded border p-2">
       <div className="flex items-baseline justify-between">
         <span className="text-text-muted font-mono text-[10px] uppercase tracking-wider">
           Portfolio Heatmap
@@ -208,7 +208,7 @@ export function PortfolioHeatmap() {
                   height={Math.max(tile.height - 0.4, 0)}
                   fill={fill}
                   fillOpacity={opacityFor(tile.pnlPercent)}
-                  stroke="#0d1117"
+                  stroke="#0b0e14"
                   strokeWidth={0.2}
                 />
                 {tile.width > 8 && tile.height > 6 ? (
@@ -217,7 +217,7 @@ export function PortfolioHeatmap() {
                     y={tile.y + tile.height / 2}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#0d1117"
+                    fill="#0b0e14"
                     fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                     fontSize={Math.max(2.4, Math.min(4, tile.width / 4))}
                     fontWeight="700"

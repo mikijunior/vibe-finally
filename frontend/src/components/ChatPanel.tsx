@@ -1,29 +1,29 @@
 /**
  * ChatPanel — conversation surface for the FinAlly AI assistant.
  *
- * Each assistant message renders inline action chips for every executed
- * trade ("Bought 10 AAPL @ $191.50") and watchlist change ("+ NVDA added").
- * Failed actions render red chips with the server's detail message.
+ * The panel is a full-height right rail of the dashboard. Its collapsed state
+ * is owned by `useChatPanelCollapsed` (zustand store) so the page-level
+ * grid can react — collapsed width is 48px, expanded is whatever the right
+ * column gives it (currently 400px).
  *
- * The panel is collapsible: clicking the chevron toggles a 32px rail with
- * just a chat icon so the dashboard can reclaim the right-hand column.
+ * Each assistant message renders inline action chips for every executed
+ * trade ("Bought 10 AAPL") and watchlist change ("+ NVDA added"). Failed
+ * actions render red chips with the server's detail message.
  */
 
 "use client";
 
 import { clsx } from "clsx";
-import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronRight, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { formatQuantity } from "@/lib/format";
 import { useChat } from "@/lib/hooks/useChat";
+import { useChatPanelCollapsed } from "@/lib/hooks/useChatPanelCollapsed";
 import type { ChatActionResult } from "@/lib/types";
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-
-const PANEL_WIDTH_EXPANDED = "w-80";
-const PANEL_WIDTH_COLLAPSED = "w-8";
 
 function ActionChip({ action }: { action: ChatActionResult }) {
   if (action.status === "failed") {
@@ -45,9 +45,6 @@ function ActionChip({ action }: { action: ChatActionResult }) {
       action.side === "buy"
         ? "bg-pnl-up text-bg-base"
         : "bg-pnl-down text-white";
-    // The price isn't returned by the executor (only side/quantity). The
-    // formatted chip shows the verb, qty, and ticker; the dollar amount is
-    // shown only if we ever extend the API to include it.
     return (
       <span
         className={clsx(
@@ -62,7 +59,8 @@ function ActionChip({ action }: { action: ChatActionResult }) {
   }
 
   // type === "watchlist"
-  const label = action.action === "remove" ? `- ${action.ticker} removed` : `+ ${action.ticker} added`;
+  const label =
+    action.action === "remove" ? `- ${action.ticker} removed` : `+ ${action.ticker} added`;
   return (
     <span
       className="bg-purple-secondary inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-white"
@@ -75,8 +73,11 @@ function ActionChip({ action }: { action: ChatActionResult }) {
 
 export function ChatPanel() {
   const { messages, loading, sendMessage } = useChat();
+  const collapsed = useChatPanelCollapsed((s) => s.collapsed);
+  const setCollapsed = useChatPanelCollapsed((s) => s.set);
+  const toggle = useChatPanelCollapsed((s) => s.toggle);
+
   const [draft, setDraft] = useState<string>("");
-  const [collapsed, setCollapsed] = useState<boolean>(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -94,7 +95,6 @@ export function ChatPanel() {
     if (!value || loading) return;
     setDraft("");
     await sendMessage(value);
-    // Restore focus for the next message.
     inputRef.current?.focus();
   };
 
@@ -102,26 +102,16 @@ export function ChatPanel() {
     return (
       <aside
         aria-label="Chat panel (collapsed)"
-        className={clsx(
-          "bg-bg-elevated border-border-muted flex h-full flex-col items-center justify-start gap-2 border-l py-2",
-          PANEL_WIDTH_COLLAPSED,
-        )}
+        className="bg-bg-elevated border-border-muted flex h-full w-full flex-col items-center justify-start gap-3 rounded border py-3"
+        data-testid="chat-panel-collapsed"
       >
         <button
           type="button"
           aria-label="Expand chat panel"
           onClick={() => setCollapsed(false)}
-          className="text-text-muted hover:text-blue-primary rounded p-1 transition-colors"
+          className="text-text-muted hover:text-accent-yellow rounded p-1 transition-colors"
         >
-          <MessageSquare size={16} />
-        </button>
-        <button
-          type="button"
-          aria-label="Expand chat panel"
-          onClick={() => setCollapsed(false)}
-          className="text-text-muted hover:text-blue-primary rounded p-1 transition-colors"
-        >
-          <ChevronLeft size={16} />
+          <MessageSquare size={18} />
         </button>
       </aside>
     );
@@ -130,10 +120,7 @@ export function ChatPanel() {
   return (
     <aside
       aria-label="Chat panel"
-      className={clsx(
-        "bg-bg-elevated border-border-muted flex h-full flex-col border-l",
-        PANEL_WIDTH_EXPANDED,
-      )}
+      className="bg-bg-elevated border-border-muted flex h-full w-full flex-col rounded border"
       data-testid="chat-panel"
     >
       <header className="border-border-muted flex items-center justify-between border-b px-3 py-2">
@@ -148,8 +135,8 @@ export function ChatPanel() {
         <button
           type="button"
           aria-label="Collapse chat panel"
-          onClick={() => setCollapsed(true)}
-          className="text-text-muted hover:text-blue-primary rounded p-1 transition-colors"
+          onClick={toggle}
+          className="text-text-muted hover:text-accent-yellow rounded p-1 transition-colors"
         >
           <ChevronRight size={16} />
         </button>
@@ -157,11 +144,11 @@ export function ChatPanel() {
 
       <div
         ref={scrollRef}
-        className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-2"
         data-testid="chat-message-list"
       >
         {messages.length === 0 && !loading ? (
-          <div className="text-text-muted flex flex-1 flex-col items-center justify-center gap-1 font-mono text-xs italic">
+          <div className="text-text-muted flex flex-1 flex-col items-center justify-center gap-1 px-2 text-center font-mono text-xs italic">
             <span>Ask the AI to analyze your portfolio,</span>
             <span>propose trades, or manage the watchlist.</span>
             <span className="mt-1 opacity-60">e.g. &ldquo;Buy 5 shares of NVDA&rdquo;</span>
@@ -174,16 +161,14 @@ export function ChatPanel() {
             <div
               key={msg.id}
               className={clsx(
-                "flex flex-col gap-1 rounded p-2",
+                "flex flex-col gap-1 rounded p-2 text-sm leading-relaxed",
                 isUser
-                  ? "bg-blue-primary text-bg-base self-end max-w-[85%]"
+                  ? "bg-blue-primary text-bg-base self-end max-w-[90%]"
                   : "bg-bg-base border-border-muted border self-start max-w-[95%]",
               )}
               data-testid={`chat-message-${msg.role}`}
             >
-              <div className="font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                {msg.content}
-              </div>
+              <div className="whitespace-pre-wrap">{msg.content}</div>
               {!isUser && msg.actions.length > 0 ? (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {msg.actions.map((a, idx) => (
@@ -217,7 +202,7 @@ export function ChatPanel() {
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Ask FinAlly…"
           disabled={loading}
-          className="placeholder:text-text-muted flex-1"
+          className="placeholder:text-text-muted h-10 flex-1"
           data-testid="chat-input"
         />
         <Button
